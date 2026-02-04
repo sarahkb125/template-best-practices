@@ -2,7 +2,7 @@
 
 export function parseTemplateUrl(input: string): string {
   // Handle different URL formats:
-  // 1. railway.com/deploy?code=XXX
+  // 1. railway.com/deploy/code
   // 2. railway.com/template/XXX
   // 3. Just the template code: XXX
 
@@ -28,10 +28,10 @@ export function parseTemplateUrl(input: string): string {
       return pathMatch[1];
     }
 
-    // Check for /deploy with code parameter
-    const deployCodeMatch = url.pathname.match(/\/deploy\/([^\/]+)/);
-    if (deployCodeMatch) {
-      return deployCodeMatch[1];
+    // Check for /deploy/XXX format
+    const deployPathMatch = url.pathname.match(/\/deploy\/([^\/]+)/);
+    if (pathMatch) {
+      return pathMatch[1];
     }
 
     throw new Error(`Could not extract template code from URL: ${input}`);
