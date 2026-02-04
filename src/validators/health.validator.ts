@@ -22,8 +22,42 @@ const WEB_SERVICE_INDICATORS = [
   'app',
 ];
 
+function parseDockerfileHealthcheck(dockerfile: string): string | null {
+  // Look for HEALTHCHECK instruction in Dockerfile
+  const healthcheckRegex = /HEALTHCHECK\s+(?:--[a-z-]+=\S+\s+)*CMD\s+(.+)/i;
+  const match = dockerfile.match(healthcheckRegex);
+
+  if (match) {
+    const cmd = match[1].trim();
+
+    // Try to extract endpoint from common patterns
+    // e.g., curl -f http://localhost:8080/health
+    const urlMatch = cmd.match(/https?:\/\/[^\/]+(\/.+?)(?:\s|$|")/);
+    if (urlMatch) {
+      return urlMatch[1];
+    }
+
+    // e.g., wget --quiet --tries=1 --spider http://localhost/api/health
+    const wgetMatch = cmd.match(/wget\s+.*?(\/[\w\/\-]+)/);
+    if (wgetMatch) {
+      return wgetMatch[1];
+    }
+
+    // Return the full command if we can't extract endpoint
+    return `Dockerfile: ${cmd}`;
+  }
+
+  return null;
+}
+
 export function validateHealthChecks(template: TemplateData): ValidationResult[] {
   const results: ValidationResult[] = [];
+
+  // Check if Dockerfile has HEALTHCHECK instruction
+  let dockerfileHealthcheck: string | null = null;
+  if (template.dockerfile) {
+    dockerfileHealthcheck = parseDockerfileHealthcheck(template.dockerfile);
+  }
 
   for (const service of template.config.services) {
     const serviceName = service.name.toLowerCase();
@@ -37,7 +71,10 @@ export function validateHealthChecks(template: TemplateData): ValidationResult[]
     );
 
     if (looksLikeWebService) {
-      if (!service.healthcheckPath) {
+      const hasRailwayHealthcheck = !!service.healthcheckPath;
+      const hasDockerHealthcheck = !!dockerfileHealthcheck;
+
+      if (!hasRailwayHealthcheck && !hasDockerHealthcheck) {
         results.push({
           rule: RULE,
           passed: false,
@@ -45,33 +82,47 @@ export function validateHealthChecks(template: TemplateData): ValidationResult[]
           message: `Service "${service.name}" appears to be a web service but has no health check configured`,
           details: { service: service.name },
           suggestions: [
-            'Add a healthcheckPath field pointing to a health endpoint (e.g., "/health" or "/api/health")',
+            'Add a healthcheckPath field in Railway config pointing to a health endpoint (e.g., "/health" or "/api/health")',
+            'Or add a HEALTHCHECK instruction in your Dockerfile',
             'Prefer readiness endpoints over liveness endpoints',
             'Ensure the endpoint returns 200 OK when the service is ready',
           ],
         });
       } else {
-        // Validate the health check path format
-        const path = service.healthcheckPath;
+        // Validate Railway health check path format if present
+        if (hasRailwayHealthcheck) {
+          const path = service.healthcheckPath!;
 
-        if (!path.startsWith('/')) {
-          results.push({
-            rule: RULE,
-            passed: false,
-            severity: 'error',
-            message: `Health check path for service "${service.name}" should start with /`,
-            details: { service: service.name, healthcheckPath: path },
-            suggestions: ['Update healthcheckPath to start with / (e.g., "/health")'],
-          });
-        } else {
-          // Health check is properly configured
+          if (!path.startsWith('/')) {
+            results.push({
+              rule: RULE,
+              passed: false,
+              severity: 'error',
+              message: `Health check path for service "${service.name}" should start with /`,
+              details: { service: service.name, healthcheckPath: path },
+              suggestions: ['Update healthcheckPath to start with / (e.g., "/health")'],
+            });
+          } else {
+            results.push({
+              rule: RULE,
+              passed: true,
+              severity: 'info',
+              message: `Service "${service.name}" has a properly configured Railway health check at ${path}`,
+              details: { service: service.name, healthcheckPath: path },
+              suggestions: [],
+            });
+          }
+        }
+
+        // Report Dockerfile healthcheck if found
+        if (hasDockerHealthcheck && !hasRailwayHealthcheck) {
           results.push({
             rule: RULE,
             passed: true,
             severity: 'info',
-            message: `Service "${service.name}" has a properly configured health check at ${path}`,
-            details: { service: service.name, healthcheckPath: path },
-            suggestions: [],
+            message: `Service "${service.name}" has a health check defined in Dockerfile: ${dockerfileHealthcheck}`,
+            details: { service: service.name, dockerHealthcheck: dockerfileHealthcheck },
+            suggestions: ['Consider also adding healthcheckPath in Railway config for better visibility'],
           });
         }
       }

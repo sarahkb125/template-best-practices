@@ -69,5 +69,6 @@ export interface TemplateData {
   config: RailwayTemplate;
   repoUrl: string;
   readme?: string;
+  dockerfile?: string;
   serviceMetadata?: ServiceMetadata[];
 }

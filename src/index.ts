@@ -125,13 +125,18 @@ app.post('/validate', async (req, res) => {
       }
     }
 
-    // Fetch README from GitHub if repo is available (optional)
+    // Fetch README and Dockerfile from GitHub if repo is available (optional)
     let readme = templateRaw.readme;
-    if (repoUrl && !readme) {
+    let dockerfile: string | undefined;
+
+    if (repoUrl) {
       try {
-        readme = await githubFetcher.fetchReadme(repoUrl);
+        if (!readme) {
+          readme = await githubFetcher.fetchReadme(repoUrl);
+        }
+        dockerfile = await githubFetcher.fetchDockerfile(repoUrl);
       } catch (error) {
-        // Ignore errors - README is optional
+        // Ignore errors - README and Dockerfile are optional
       }
     }
 
@@ -147,6 +152,7 @@ app.post('/validate', async (req, res) => {
       config,
       repoUrl: repoUrl || 'N/A',
       readme,
+      dockerfile,
     };
 
     // Validate the template

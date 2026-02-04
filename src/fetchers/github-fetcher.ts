@@ -64,6 +64,22 @@ export class GitHubFetcher {
     return undefined; // No README found
   }
 
+  async fetchDockerfile(repoUrl: string): Promise<string | undefined> {
+    const { owner, repo, branch } = this.parseGitHubUrl(repoUrl);
+
+    const possibleDockerfiles = ['Dockerfile', 'dockerfile', 'Dockerfile.prod', 'Dockerfile.production'];
+
+    for (const filename of possibleDockerfiles) {
+      try {
+        return await this.fetchFileContent(owner, repo, filename, branch);
+      } catch (error) {
+        // Continue to next possibility
+      }
+    }
+
+    return undefined; // No Dockerfile found
+  }
+
   private async fetchFileContent(owner: string, repo: string, path: string, branch: string): Promise<string> {
     // Use raw.githubusercontent.com for faster, direct file access
     const url = `${GITHUB_RAW_BASE}/${owner}/${repo}/${branch}/${path}`;
