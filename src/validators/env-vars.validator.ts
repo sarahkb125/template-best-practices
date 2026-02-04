@@ -20,30 +20,6 @@ const SECRET_PATTERNS = [
 
 const WEAK_DEFAULTS = ['password', 'admin', 'password123', 'secret', 'changeme', '123456'];
 
-// Variables that are commonly self-explanatory or internal-only (Railway provided)
-const WELL_KNOWN_VARS = new Set([
-  'PORT',
-  'NODE_ENV',
-  'DATABASE_URL',
-  'REDIS_URL',
-  'POSTGRES_USER',
-  'POSTGRES_DB',
-  'MYSQL_USER',
-  'MYSQL_DATABASE',
-]);
-
-// Standard database configuration values that are self-explanatory
-const STANDARD_DB_VALUES = new Set([
-  '6379', // Redis default port
-  '5432', // PostgreSQL default port
-  '3306', // MySQL default port
-  '27017', // MongoDB default port
-  'default', // Default username
-  'postgres', // PostgreSQL default user
-  'root', // MySQL default user
-  'admin', // Common admin user
-]);
-
 // Check if variable is a reference to another variable
 function isReferenceVariable(defaultValue: string): boolean {
   if (!defaultValue) return false;
@@ -51,20 +27,73 @@ function isReferenceVariable(defaultValue: string): boolean {
   return /^\$\{\{\s*[A-Z_][A-Z0-9_]*\s*\}\}$/i.test(defaultValue);
 }
 
-// Check if variable uses template functions
+// Check if variable uses template functions (auto-generated, user won't touch)
 function usesTemplateFunction(defaultValue: string): boolean {
   if (!defaultValue) return false;
   // Matches ${{ secret(...) }}, ${{ randomInt(...) }}, etc.
   return /\$\{\{\s*(secret|randomInt|randomString)\s*\(/i.test(defaultValue);
 }
 
-// Check if variable uses Railway-provided values (less critical to have descriptions)
+// Check if variable uses Railway-provided values (system-managed, user won't touch)
 function usesRailwayProvidedValue(defaultValue: string): boolean {
   if (!defaultValue) return false;
   return defaultValue.includes('RAILWAY_') ||
          defaultValue.includes('${{RAILWAY') ||
          defaultValue === 'railway' ||
          defaultValue === 'production';
+}
+
+// Standard system values that are pre-configured and users won't change
+const STANDARD_SYSTEM_VALUES = new Set([
+  '6379',      // Redis default port
+  '5432',      // PostgreSQL default port
+  '3306',      // MySQL default port
+  '27017',     // MongoDB default port
+  'default',   // Default username
+  'postgres',  // PostgreSQL default user
+  'root',      // MySQL default user
+  'pg',        // Database client type
+  'redis',     // Cache store type
+  'true',      // Boolean flags
+  'false',     // Boolean flags
+  's3',        // Storage driver
+  'raw',       // Log style
+]);
+
+// Check if this is an internal/system variable that users won't touch
+function isInternalVariable(varName: string, defaultValue: string): boolean {
+  // Auto-generated secrets
+  if (usesTemplateFunction(defaultValue)) return true;
+
+  // References to other template variables (computed/derived)
+  if (isReferenceVariable(defaultValue)) return true;
+
+  // Railway-provided system values
+  if (usesRailwayProvidedValue(defaultValue)) return true;
+
+  // Standard system configuration values
+  if (STANDARD_SYSTEM_VALUES.has(defaultValue)) return true;
+
+  // Internal variable patterns (computed URLs, connection strings)
+  if (defaultValue.includes('://') && defaultValue.includes('${{')) return true;
+
+  return false;
+}
+
+// Check if this is a user-facing variable that needs a description
+function isUserFacingVariable(varConfig: any): boolean {
+  const defaultValue = varConfig.default || '';
+
+  // No default value = user must provide it
+  if (!defaultValue || defaultValue.trim() === '') return true;
+
+  // Has a placeholder or example value (not a real default)
+  if (defaultValue.includes('your-') || defaultValue.includes('example') || defaultValue === 'changeme') return true;
+
+  // Marked as optional = user might configure it
+  if (varConfig.isOptional === true) return true;
+
+  return false;
 }
 
 export function validateEnvVars(template: TemplateData): ValidationResult[] {
@@ -78,27 +107,37 @@ export function validateEnvVars(template: TemplateData): ValidationResult[] {
     for (const [varName, varConfig] of Object.entries(service.variables)) {
       const defaultValue = varConfig.default || '';
 
-      // Check for missing descriptions (but be lenient for well-known or Railway-provided vars)
+      // Check for missing descriptions
       if (!varConfig.description || varConfig.description.trim() === '') {
-        const isWellKnown = WELL_KNOWN_VARS.has(varName);
-        const isRailwayProvided = usesRailwayProvidedValue(defaultValue);
-        const isStandardValue = STANDARD_DB_VALUES.has(defaultValue);
-        const isReference = isReferenceVariable(defaultValue);
-        const usesFunction = usesTemplateFunction(defaultValue);
+        const isInternal = isInternalVariable(varName, defaultValue);
+        const isUserFacing = isUserFacingVariable(varConfig);
 
-        // Skip if it's a well-known var, standard DB value, reference var, or uses template functions
-        const shouldSkip = isWellKnown || isRailwayProvided || isStandardValue || isReference || usesFunction;
-
-        if (!shouldSkip) {
+        // Only flag user-facing variables that lack descriptions
+        // Internal/system variables that users won't touch don't need descriptions
+        if (isUserFacing && !isInternal) {
           results.push({
             rule: RULE,
             passed: false,
-            severity: 'info', // Downgrade from warning to info
+            severity: 'warning',
             message: `Environment variable "${varName}" in service "${service.name}" is missing a description`,
-            details: { service: service.name, variable: varName },
-            suggestions: ['Add a description explaining what this variable is for and where to find its value'],
+            details: { service: service.name, variable: varName, userFacing: true },
+            suggestions: [
+              'Add a description explaining what this variable is for',
+              'Include where users can find this value or what they should enter',
+            ],
+          });
+        } else if (!isInternal && !isUserFacing) {
+          // Pre-configured values that users might still want to understand
+          results.push({
+            rule: RULE,
+            passed: false,
+            severity: 'info',
+            message: `Environment variable "${varName}" in service "${service.name}" could use a description for clarity`,
+            details: { service: service.name, variable: varName, userFacing: false },
+            suggestions: ['Consider adding a brief description to help users understand this configuration'],
           });
         }
+        // Skip internal variables entirely - they don't need descriptions
       }
 
       // Check for hardcoded secrets

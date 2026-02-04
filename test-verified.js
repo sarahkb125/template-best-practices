@@ -99,8 +99,7 @@ function validateHealthChecks(services) {
 
 function validateEnvVars(services) {
   const issues = [];
-  const WELL_KNOWN_VARS = new Set(['PORT', 'NODE_ENV', 'DATABASE_URL', 'REDIS_URL', 'POSTGRES_USER', 'POSTGRES_DB']);
-  const STANDARD_DB_VALUES = new Set(['6379', '5432', '3306', '27017', 'default', 'postgres', 'root', 'admin']);
+  const STANDARD_SYSTEM_VALUES = new Set(['6379', '5432', '3306', '27017', 'default', 'postgres', 'root', 'pg', 'redis', 'true', 'false', 's3', 'raw']);
 
   function usesRailwayProvidedValue(defaultValue) {
     if (!defaultValue) return false;
@@ -120,6 +119,23 @@ function validateEnvVars(services) {
     return /\$\{\{\s*(secret|randomInt|randomString)\s*\(/i.test(defaultValue);
   }
 
+  function isInternalVariable(varName, defaultValue) {
+    if (usesTemplateFunction(defaultValue)) return true;
+    if (isReferenceVariable(defaultValue)) return true;
+    if (usesRailwayProvidedValue(defaultValue)) return true;
+    if (STANDARD_SYSTEM_VALUES.has(defaultValue)) return true;
+    if (defaultValue.includes('://') && defaultValue.includes('${{')) return true;
+    return false;
+  }
+
+  function isUserFacingVariable(varConfig) {
+    const defaultValue = varConfig.default || '';
+    if (!defaultValue || defaultValue.trim() === '') return true;
+    if (defaultValue.includes('your-') || defaultValue.includes('example') || defaultValue === 'changeme') return true;
+    if (varConfig.isOptional === true) return true;
+    return false;
+  }
+
   for (const service of services) {
     if (!service.variables) continue;
 
@@ -127,17 +143,14 @@ function validateEnvVars(services) {
       const defaultValue = varConfig.default || '';
 
       if (!varConfig.description || varConfig.description.trim() === '') {
-        const isWellKnown = WELL_KNOWN_VARS.has(varName);
-        const isRailwayProvided = usesRailwayProvidedValue(defaultValue);
-        const isStandardValue = STANDARD_DB_VALUES.has(defaultValue);
-        const isReference = isReferenceVariable(defaultValue);
-        const usesFunction = usesTemplateFunction(defaultValue);
+        const isInternal = isInternalVariable(varName, defaultValue);
+        const isUserFacing = isUserFacingVariable(varConfig);
 
-        const shouldSkip = isWellKnown || isRailwayProvided || isStandardValue || isReference || usesFunction;
-
-        if (!shouldSkip) {
-          issues.push(`Service "${service.name}" - var "${varName}" missing description (default: "${defaultValue?.substring(0, 50)}")`);
+        // Only flag user-facing variables that lack descriptions
+        if (isUserFacing && !isInternal) {
+          issues.push(`Service "${service.name}" - var "${varName}" missing description (USER-FACING, default: "${defaultValue?.substring(0, 50)}")`);
         }
+        // Skip internal variables and non-user-facing configured values
       }
 
       // Check for weak passwords
