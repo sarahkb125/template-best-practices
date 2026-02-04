@@ -1,9 +1,9 @@
 // Fetch template metadata from Railway API
 
 import axios from 'axios';
-import { RailwayTemplateMetadata, ServiceMetadata, Creator } from '../types/template.js';
+import { RailwayTemplateMetadata, ServiceMetadata, Creator, RailwayTemplate, Service } from '../types/template.js';
 
-const RAILWAY_API_URL = 'https://backboard.railway.app/graphql/v2';
+const RAILWAY_API_URL = 'https://backboard.railway.com/graphql/v2';
 
 interface RailwayConfig {
   token?: string;
@@ -36,18 +36,12 @@ export class RailwayAPIClient {
           code
           name
           description
+          readme
           creator {
             name
             username
           }
-          services {
-            name
-            icon
-            description
-          }
-          config {
-            repo
-          }
+          serializedConfig
         }
       }
     `;
@@ -75,6 +69,26 @@ export class RailwayAPIClient {
         return null;
       }
 
+      // Parse serializedConfig to extract service metadata
+      const services: ServiceMetadata[] = [];
+      let repoUrl: string | undefined;
+
+      if (template.serializedConfig?.services) {
+        for (const [serviceId, serviceConfig] of Object.entries(template.serializedConfig.services)) {
+          const svc: any = serviceConfig;
+          services.push({
+            name: svc.name || 'Unnamed Service',
+            icon: svc.icon,
+            description: svc.description,
+          });
+
+          // Extract repo URL from source if it's a GitHub repo
+          if (svc.source?.repo) {
+            repoUrl = svc.source.repo;
+          }
+        }
+      }
+
       // Transform to our internal type
       return {
         code: template.code,
@@ -84,18 +98,73 @@ export class RailwayAPIClient {
           name: template.creator?.name || template.creator?.username || 'Unknown',
           workspaceName: template.creator?.username,
         },
-        services: template.services?.map((s: any) => ({
-          name: s.name,
-          icon: s.icon,
-          description: s.description,
-        })) || [],
-        repoUrl: template.config?.repo,
+        services,
+        repoUrl,
       };
     } catch (error: any) {
       console.error('Failed to fetch Railway template metadata:', error.message);
       // Return null instead of throwing - API access is optional
       return null;
     }
+  }
+
+  parseSerializedConfigToRailwayTemplate(serializedConfig: any): RailwayTemplate {
+    const services: Service[] = [];
+
+    if (serializedConfig?.services) {
+      for (const [serviceId, serviceConfig] of Object.entries(serializedConfig.services)) {
+        const svc: any = serviceConfig;
+
+        // Transform variables
+        const variables: Record<string, any> = {};
+        if (svc.variables) {
+          for (const [varName, varConfig] of Object.entries(svc.variables)) {
+            const vc: any = varConfig;
+            variables[varName] = {
+              description: vc.description,
+              default: vc.defaultValue,
+              isSecret: vc.isSecret,
+            };
+          }
+        }
+
+        // Extract health check path from deploy config
+        const healthcheckPath = svc.healthcheckPath;
+
+        // Build service object
+        const service: Service = {
+          name: svc.name || 'Unnamed Service',
+          icon: svc.icon,
+          description: svc.description,
+          variables,
+          healthcheckPath,
+        };
+
+        // Add source repo if available
+        if (svc.source?.repo) {
+          service.source = {
+            repo: svc.source.repo,
+            branch: svc.source.branch,
+          };
+        }
+
+        // Add volume mounts if available
+        if (svc.volumeMounts) {
+          service.volumes = [];
+          for (const [volumeId, volumeConfig] of Object.entries(svc.volumeMounts)) {
+            const vc: any = volumeConfig;
+            service.volumes.push({
+              name: volumeId,
+              mountPath: vc.mountPath,
+            });
+          }
+        }
+
+        services.push(service);
+      }
+    }
+
+    return { services };
   }
 
   async fetchServiceIcon(iconUrl: string): Promise<Buffer | null> {

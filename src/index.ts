@@ -4,6 +4,7 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
+import axios from 'axios';
 import { parseTemplateUrl, isValidTemplateCode } from './fetchers/url-parser.js';
 import { GitHubFetcher } from './fetchers/github-fetcher.js';
 import { RailwayAPIClient } from './fetchers/railway-api.js';
@@ -74,47 +75,78 @@ app.post('/validate', async (req, res) => {
       });
     }
 
-    // Fetch template metadata from Railway API
-    const metadata = await railwayClient.fetchTemplateMetadata(templateCode);
+    // Fetch template metadata from Railway API (includes serializedConfig)
+    const response = await axios.post(
+      'https://backboard.railway.com/graphql/v2',
+      {
+        query: `
+          query GetTemplate($code: String!) {
+            template(code: $code) {
+              code
+              name
+              description
+              readme
+              creator {
+                name
+                username
+              }
+              serializedConfig
+            }
+          }
+        `,
+        variables: { code: templateCode },
+      },
+      {
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 15000,
+      }
+    );
 
-    if (!metadata) {
+    if (response.data.errors || !response.data.data?.template) {
       return res.render('index', {
         error: `Template not found: ${templateCode}. Please check the template code and try again.`,
       });
     }
 
-    // Get GitHub repository URL
-    let repoUrl = metadata.repoUrl;
+    const templateRaw = response.data.data.template;
 
-    if (!repoUrl) {
-      return res.render('index', {
-        error: `Template "${metadata.name}" does not have a GitHub repository configured`,
-      });
+    // Parse serializedConfig into our RailwayTemplate format
+    const config = railwayClient.parseSerializedConfigToRailwayTemplate(templateRaw.serializedConfig);
+
+    // Extract repo URL from services if available
+    let repoUrl: string | undefined;
+    if (templateRaw.serializedConfig?.services) {
+      for (const [serviceId, serviceConfig] of Object.entries(templateRaw.serializedConfig.services)) {
+        const svc: any = serviceConfig;
+        if (svc.source?.repo) {
+          repoUrl = svc.source.repo;
+          break;
+        }
+      }
     }
 
-    // Fetch railway.json/toml from GitHub
-    let config;
-    try {
-      config = await githubFetcher.fetchRailwayConfig(repoUrl);
-    } catch (error: any) {
-      return res.render('index', {
-        error: `Failed to fetch template configuration: ${error.message}`,
-      });
+    // Fetch README from GitHub if repo is available (optional)
+    let readme = templateRaw.readme;
+    if (repoUrl && !readme) {
+      try {
+        readme = await githubFetcher.fetchReadme(repoUrl);
+      } catch (error) {
+        // Ignore errors - README is optional
+      }
     }
-
-    // Fetch README (optional)
-    const readme = await githubFetcher.fetchReadme(repoUrl);
 
     // Build template data
     const templateData: TemplateData = {
-      code: metadata.code,
-      name: metadata.name,
-      description: metadata.description,
-      creator: metadata.creator,
+      code: templateRaw.code,
+      name: templateRaw.name,
+      description: templateRaw.description,
+      creator: {
+        name: templateRaw.creator?.name || templateRaw.creator?.username || 'Unknown',
+        workspaceName: templateRaw.creator?.username,
+      },
       config,
-      repoUrl,
+      repoUrl: repoUrl || 'N/A',
       readme,
-      serviceMetadata: metadata.services,
     };
 
     // Validate the template
