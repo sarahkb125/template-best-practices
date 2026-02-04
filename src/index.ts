@@ -38,6 +38,43 @@ const railwayClient = new RailwayAPIClient({
   token: process.env.RAILWAY_API_TOKEN,
 });
 
+// Helper function to resolve actual template code from Railway URL rewrites
+async function resolveActualTemplateCode(potentialSlug: string): Promise<string | null> {
+  try {
+    // Try to fetch the Railway deploy page and check for redirects or actual code
+    const response = await axios.get(`https://railway.com/deploy/${potentialSlug}`, {
+      maxRedirects: 0,
+      validateStatus: (status) => status >= 200 && status < 400,
+      timeout: 5000,
+    });
+
+    // Check if there's a redirect with the actual code
+    const location = response.headers.location;
+    if (location) {
+      const match = location.match(/[?&]code=([^&]+)/);
+      if (match) {
+        return match[1];
+      }
+    }
+
+    // Try to extract code from the page HTML
+    const html = response.data;
+    const codeMatch = html.match(/template\/([a-zA-Z0-9-]+)|[?&]code=([a-zA-Z0-9-]+)/);
+    if (codeMatch) {
+      return codeMatch[1] || codeMatch[2];
+    }
+  } catch (error: any) {
+    // Check if there's a redirect in the error
+    if (error.response?.headers?.location) {
+      const match = error.response.headers.location.match(/[?&]code=([^&]+)/);
+      if (match) {
+        return match[1];
+      }
+    }
+  }
+  return null;
+}
+
 // Routes
 app.get('/', (req, res) => {
   res.render('index', {
@@ -103,9 +140,53 @@ app.post('/validate', async (req, res) => {
     );
 
     if (response.data.errors || !response.data.data?.template) {
-      return res.render('index', {
-        error: `Template not found: ${templateCode}. Please check the template code and try again.`,
-      });
+      // Try to resolve the actual template code from Railway URL rewrites
+      console.log(`Template not found with code: ${templateCode}, attempting to resolve actual code...`);
+      const actualCode = await resolveActualTemplateCode(templateCode);
+
+      if (actualCode && actualCode !== templateCode) {
+        console.log(`Resolved actual template code: ${actualCode}`);
+        // Retry with the actual code
+        const retryResponse = await axios.post(
+          'https://backboard.railway.com/graphql/v2',
+          {
+            query: `
+              query GetTemplate($code: String!) {
+                template(code: $code) {
+                  code
+                  name
+                  description
+                  readme
+                  creator {
+                    name
+                    username
+                  }
+                  serializedConfig
+                }
+              }
+            `,
+            variables: { code: actualCode },
+          },
+          {
+            headers: { 'Content-Type': 'application/json' },
+            timeout: 15000,
+          }
+        );
+
+        if (retryResponse.data.errors || !retryResponse.data.data?.template) {
+          return res.render('index', {
+            error: `Template not found: ${templateCode}. Tried resolving to ${actualCode} but still not found.`,
+          });
+        }
+
+        // Update templateCode to the actual code and continue
+        templateCode = actualCode;
+        response.data = retryResponse.data;
+      } else {
+        return res.render('index', {
+          error: `Template not found: ${templateCode}. Please check the template code and try again.`,
+        });
+      }
     }
 
     const templateRaw = response.data.data.template;
