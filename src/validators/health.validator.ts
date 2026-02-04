@@ -106,7 +106,7 @@ export function validateHealthChecks(template: TemplateData): ValidationResult[]
         results.push({
           rule: RULE,
           passed: false,
-          severity: 'warning',
+          severity: 'error',
           message: `Service "${service.name}" appears to be a web service but has no health check configured`,
           details: { service: service.name },
           suggestions: [
