@@ -29,7 +29,7 @@ export function validateIcons(template: TemplateData): ValidationResult[] {
       results.push({
         rule: RULE,
         passed: false,
-        severity: 'warning',
+        severity: 'error',
         message: `Service "${service.name}" is missing an icon`,
         details: { service: service.name },
         suggestions: [
