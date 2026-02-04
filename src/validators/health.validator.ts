@@ -12,7 +12,6 @@ const RULE = {
 
 // Services that likely need health checks (web servers, APIs)
 const WEB_SERVICE_INDICATORS = [
-  'port',
   'http',
   'api',
   'server',
@@ -20,6 +19,24 @@ const WEB_SERVICE_INDICATORS = [
   'frontend',
   'backend',
   'app',
+];
+
+// Database and infrastructure services that DON'T need health checks
+const DATABASE_INDICATORS = [
+  'redis',
+  'postgres',
+  'postgis',
+  'mysql',
+  'mariadb',
+  'mongo',
+  'mongodb',
+  'elasticsearch',
+  'cassandra',
+  'influxdb',
+  'timescale',
+  'cockroach',
+  'minio',
+  'bucket',
 ];
 
 function parseDockerfileHealthcheck(dockerfile: string): string | null {
@@ -61,6 +78,17 @@ export function validateHealthChecks(template: TemplateData): ValidationResult[]
 
   for (const service of template.config.services) {
     const serviceName = service.name.toLowerCase();
+
+    // Check if this is a database or infrastructure service (exempt from health checks)
+    const isDatabase = DATABASE_INDICATORS.some(
+      indicator => serviceName.includes(indicator)
+    );
+
+    // Skip databases - they don't need HTTP health checks
+    if (isDatabase) {
+      continue;
+    }
+
     const hasPort = service.variables && Object.keys(service.variables).some(
       key => key.toLowerCase().includes('port')
     );

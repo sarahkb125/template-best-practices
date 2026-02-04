@@ -20,6 +20,23 @@ const SECRET_PATTERNS = [
 
 const WEAK_DEFAULTS = ['password', 'admin', 'password123', 'secret', 'changeme', '123456'];
 
+// Variables that are commonly self-explanatory or internal-only (Railway provided)
+const WELL_KNOWN_VARS = new Set([
+  'PORT',
+  'NODE_ENV',
+  'DATABASE_URL',
+  'REDIS_URL',
+]);
+
+// Check if variable uses Railway-provided values (less critical to have descriptions)
+function usesRailwayProvidedValue(defaultValue: string): boolean {
+  if (!defaultValue) return false;
+  return defaultValue.includes('RAILWAY_') ||
+         defaultValue.includes('${{RAILWAY') ||
+         defaultValue === 'railway' ||
+         defaultValue === 'production';
+}
+
 export function validateEnvVars(template: TemplateData): ValidationResult[] {
   const results: ValidationResult[] = [];
 
@@ -29,16 +46,24 @@ export function validateEnvVars(template: TemplateData): ValidationResult[] {
     }
 
     for (const [varName, varConfig] of Object.entries(service.variables)) {
-      // Check for missing descriptions
+      const defaultValue = varConfig.default || '';
+
+      // Check for missing descriptions (but be lenient for well-known or Railway-provided vars)
       if (!varConfig.description || varConfig.description.trim() === '') {
-        results.push({
-          rule: RULE,
-          passed: false,
-          severity: 'warning',
-          message: `Environment variable "${varName}" in service "${service.name}" is missing a description`,
-          details: { service: service.name, variable: varName },
-          suggestions: ['Add a description explaining what this variable is for and where to find its value'],
-        });
+        const isWellKnown = WELL_KNOWN_VARS.has(varName);
+        const isRailwayProvided = usesRailwayProvidedValue(defaultValue);
+
+        // Only warn if it's not a well-known var AND doesn't use Railway-provided values
+        if (!isWellKnown && !isRailwayProvided) {
+          results.push({
+            rule: RULE,
+            passed: false,
+            severity: 'info', // Downgrade from warning to info
+            message: `Environment variable "${varName}" in service "${service.name}" is missing a description`,
+            details: { service: service.name, variable: varName },
+            suggestions: ['Add a description explaining what this variable is for and where to find its value'],
+          });
+        }
       }
 
       // Check for hardcoded secrets
