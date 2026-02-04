@@ -24,9 +24,11 @@
           <% if (templateData.creator) { %>
             <span class="meta-item">Creator: <%= templateData.creator.name %></span>
           <% } %>
-          <span class="meta-item">
-            <a href="<%= templateData.repoUrl %>" target="_blank">View Repository</a>
-          </span>
+          <% if (templateData.repoUrl && templateData.repoUrl !== 'N/A' && templateData.repoUrl.startsWith('http')) { %>
+            <span class="meta-item">
+              <a href="<%= templateData.repoUrl %>" target="_blank">View Repository</a>
+            </span>
+          <% } %>
         </div>
       </div>
 
