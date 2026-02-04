@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Railway Template Validator</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Railway Template Validator</h1>
+      <p class="subtitle">Validate your Railway templates against best practices</p>
+    </header>
+
+    <main>
+      <div class="card">
+        <% if (error) { %>
+          <div class="error-message">
+            <strong>Error:</strong> <%= error %>
+          </div>
+        <% } %>
+
+        <form action="/validate" method="POST">
+          <div class="form-group">
+            <label for="templateUrl">Template URL or Code</label>
+            <input
+              type="text"
+              id="templateUrl"
+              name="templateUrl"
+              placeholder="railway.com/deploy?code=XXX or template code"
+              required
+            >
+            <small class="help-text">
+              Enter a Railway template URL (e.g., railway.com/deploy?code=abc123) or just the template code
+            </small>
+          </div>
+
+          <button type="submit" class="btn btn-primary">Validate Template</button>
+        </form>
+      </div>
+
+      <div class="info-section">
+        <h2>What Gets Validated?</h2>
+        <ul class="features-list">
+          <li><strong>Environment Variables</strong> - Descriptions, secure credential handling, template functions usage</li>
+          <li><strong>Health Checks</strong> - Proper health check endpoints for web services</li>
+          <li><strong>Naming Conventions</strong> - Capital case, space-delimited, no special characters</li>
+        </ul>
+
+        <p class="muted">
+          Based on the official
+          <a href="https://docs.railway.com/guides/templates-best-practices" target="_blank">Railway Template Best Practices</a>
+        </p>
+      </div>
+    </main>
+
+    <footer>
+      <p>Built for Railway • <a href="https://github.com" target="_blank">Source Code</a></p>
+    </footer>
+  </div>
+</body>
+</html>

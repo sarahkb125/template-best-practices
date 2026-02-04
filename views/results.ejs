@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Validation Results - <%= templateData.name %></title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Validation Results</h1>
+      <a href="/" class="btn btn-secondary">Validate Another</a>
+    </header>
+
+    <main>
+      <div class="card template-info">
+        <h2><%= templateData.name %></h2>
+        <% if (templateData.description) { %>
+          <p class="template-description"><%= templateData.description %></p>
+        <% } %>
+        <div class="template-meta">
+          <span class="meta-item">Code: <code><%= templateData.code %></code></span>
+          <% if (templateData.creator) { %>
+            <span class="meta-item">Creator: <%= templateData.creator.name %></span>
+          <% } %>
+          <span class="meta-item">
+            <a href="<%= templateData.repoUrl %>" target="_blank">View Repository</a>
+          </span>
+        </div>
+      </div>
+
+      <div class="card score-card">
+        <div class="score-header">
+          <h2>Overall Score</h2>
+          <div class="score <%= report.overallScore >= 80 ? 'score-good' : report.overallScore >= 50 ? 'score-medium' : 'score-bad' %>">
+            <%= report.overallScore %>%
+          </div>
+        </div>
+        <div class="score-stats">
+          <div class="stat">
+            <div class="stat-value"><%= report.passedRules %></div>
+            <div class="stat-label">Passed</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value"><%= report.failedRules %></div>
+            <div class="stat-label">Failed</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value"><%= report.warnings %></div>
+            <div class="stat-label">Warnings</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="results-section">
+        <h2>Validation Details</h2>
+
+        <%
+        const groupedResults = {};
+        report.results.forEach(result => {
+          if (!groupedResults[result.rule.id]) {
+            groupedResults[result.rule.id] = [];
+          }
+          groupedResults[result.rule.id].push(result);
+        });
+        %>
+
+        <% Object.entries(groupedResults).forEach(([ruleId, results]) => {
+          const ruleResults = results;
+          const allPassed = ruleResults.every(r => r.passed);
+          const hasErrors = ruleResults.some(r => !r.passed && r.severity === 'error');
+          const hasWarnings = ruleResults.some(r => !r.passed && r.severity === 'warning');
+        %>
+          <div class="result-card <%= allPassed ? 'result-pass' : hasErrors ? 'result-error' : 'result-warning' %>">
+            <div class="result-header">
+              <div>
+                <span class="result-icon"><%= allPassed ? '✓' : hasErrors ? '✗' : '⚠' %></span>
+                <h3><%= ruleResults[0].rule.name %></h3>
+              </div>
+              <span class="badge <%= allPassed ? 'badge-success' : hasErrors ? 'badge-error' : 'badge-warning' %>">
+                <%= allPassed ? 'PASSED' : hasErrors ? 'FAILED' : 'WARNING' %>
+              </span>
+            </div>
+            <p class="rule-description"><%= ruleResults[0].rule.description %></p>
+
+            <% ruleResults.forEach(result => { %>
+              <div class="result-item">
+                <p class="result-message"><%= result.message %></p>
+
+                <% if (result.suggestions && result.suggestions.length > 0) { %>
+                  <div class="suggestions">
+                    <strong>Suggestions:</strong>
+                    <ul>
+                      <% result.suggestions.forEach(suggestion => { %>
+                        <li><%= suggestion %></li>
+                      <% }) %>
+                    </ul>
+                  </div>
+                <% } %>
+              </div>
+            <% }) %>
+          </div>
+        <% }) %>
+      </div>
+    </main>
+
+    <footer>
+      <p>Built for Railway • <a href="/" class="btn btn-link">Validate Another Template</a></p>
+    </footer>
+  </div>
+</body>
+</html>
