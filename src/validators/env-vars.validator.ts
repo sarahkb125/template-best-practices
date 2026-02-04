@@ -26,7 +26,37 @@ const WELL_KNOWN_VARS = new Set([
   'NODE_ENV',
   'DATABASE_URL',
   'REDIS_URL',
+  'POSTGRES_USER',
+  'POSTGRES_DB',
+  'MYSQL_USER',
+  'MYSQL_DATABASE',
 ]);
+
+// Standard database configuration values that are self-explanatory
+const STANDARD_DB_VALUES = new Set([
+  '6379', // Redis default port
+  '5432', // PostgreSQL default port
+  '3306', // MySQL default port
+  '27017', // MongoDB default port
+  'default', // Default username
+  'postgres', // PostgreSQL default user
+  'root', // MySQL default user
+  'admin', // Common admin user
+]);
+
+// Check if variable is a reference to another variable
+function isReferenceVariable(defaultValue: string): boolean {
+  if (!defaultValue) return false;
+  // Matches ${{VAR_NAME}} or ${{ VAR_NAME }}
+  return /^\$\{\{\s*[A-Z_][A-Z0-9_]*\s*\}\}$/i.test(defaultValue);
+}
+
+// Check if variable uses template functions
+function usesTemplateFunction(defaultValue: string): boolean {
+  if (!defaultValue) return false;
+  // Matches ${{ secret(...) }}, ${{ randomInt(...) }}, etc.
+  return /\$\{\{\s*(secret|randomInt|randomString)\s*\(/i.test(defaultValue);
+}
 
 // Check if variable uses Railway-provided values (less critical to have descriptions)
 function usesRailwayProvidedValue(defaultValue: string): boolean {
@@ -52,9 +82,14 @@ export function validateEnvVars(template: TemplateData): ValidationResult[] {
       if (!varConfig.description || varConfig.description.trim() === '') {
         const isWellKnown = WELL_KNOWN_VARS.has(varName);
         const isRailwayProvided = usesRailwayProvidedValue(defaultValue);
+        const isStandardValue = STANDARD_DB_VALUES.has(defaultValue);
+        const isReference = isReferenceVariable(defaultValue);
+        const usesFunction = usesTemplateFunction(defaultValue);
 
-        // Only warn if it's not a well-known var AND doesn't use Railway-provided values
-        if (!isWellKnown && !isRailwayProvided) {
+        // Skip if it's a well-known var, standard DB value, reference var, or uses template functions
+        const shouldSkip = isWellKnown || isRailwayProvided || isStandardValue || isReference || usesFunction;
+
+        if (!shouldSkip) {
           results.push({
             rule: RULE,
             passed: false,

@@ -129,7 +129,7 @@ export class RailwayAPIClient {
         }
 
         // Extract health check path from deploy config
-        const healthcheckPath = svc.healthcheckPath;
+        const healthcheckPath = svc.deploy?.healthcheckPath || svc.healthcheckPath;
 
         // Build service object
         const service: Service = {
