@@ -31,14 +31,31 @@ function isReasonableLength(name: string): boolean {
   return words.length >= 1 && words.length <= 6 && name.length >= 2 && name.length <= 50;
 }
 
+function extractGitHubOwner(repoUrl: string): string | null {
+  try {
+    // Extract owner from GitHub URLs like https://github.com/owner/repo
+    const match = repoUrl.match(/github\.com\/([^\/]+)\//);
+    return match ? match[1].toLowerCase() : null;
+  } catch {
+    return null;
+  }
+}
+
 export function validateNaming(template: TemplateData): ValidationResult[] {
   const results: ValidationResult[] = [];
+
+  // Extract GitHub owner for company/org name checking
+  const githubOwner = template.repoUrl ? extractGitHubOwner(template.repoUrl) : null;
 
   // Check template name
   if (template.name) {
     const issues: string[] = [];
+    const templateLower = template.name.toLowerCase();
 
-    if (!hasCapitalCase(template.name)) {
+    // Skip capital case check if the name matches the GitHub org/company name
+    const matchesGitHubOwner = githubOwner && templateLower.includes(githubOwner);
+
+    if (!hasCapitalCase(template.name) && !matchesGitHubOwner) {
       issues.push('not in capital case');
     }
 
@@ -74,8 +91,12 @@ export function validateNaming(template: TemplateData): ValidationResult[] {
   // Check service names
   for (const service of template.config.services) {
     const issues: string[] = [];
+    const serviceLower = service.name.toLowerCase();
 
-    if (!hasCapitalCase(service.name)) {
+    // Skip capital case check if the service name matches the GitHub org/company name
+    const matchesGitHubOwner = githubOwner && serviceLower.includes(githubOwner);
+
+    if (!hasCapitalCase(service.name) && !matchesGitHubOwner) {
       issues.push('not in capital case');
     }
 

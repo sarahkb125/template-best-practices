@@ -5,15 +5,25 @@ import { TemplateData } from '../types/template.js';
 import { validateEnvVars } from './env-vars.validator.js';
 import { validateHealthChecks } from './health.validator.js';
 import { validateNaming } from './naming.validator.js';
+import { validateIcons } from './icons.validator.js';
+import { validateNetwork } from './network.validator.js';
+import { validateStorage } from './storage.validator.js';
+import { validateAuth } from './auth.validator.js';
+import { validateWorkspace } from './workspace.validator.js';
 
 export async function validateTemplate(template: TemplateData): Promise<ValidationReport> {
   const allResults: ValidationResult[] = [];
 
   // Run all validators in parallel
   const validatorResults = await Promise.all([
+    Promise.resolve(validateIcons(template)),
+    Promise.resolve(validateNaming(template)),
+    Promise.resolve(validateNetwork(template)),
     Promise.resolve(validateEnvVars(template)),
     Promise.resolve(validateHealthChecks(template)),
-    Promise.resolve(validateNaming(template)),
+    Promise.resolve(validateStorage(template)),
+    Promise.resolve(validateAuth(template)),
+    Promise.resolve(validateWorkspace(template)),
   ]);
 
   // Flatten results

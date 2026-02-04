@@ -58,50 +58,113 @@
 
         <%
         const groupedResults = {};
+        const technicalRules = new Set(['private-networking', 'persistent-storage']);
+        const generalResults = {};
+        const technicalResults = {};
+
         report.results.forEach(result => {
           if (!groupedResults[result.rule.id]) {
             groupedResults[result.rule.id] = [];
           }
           groupedResults[result.rule.id].push(result);
         });
+
+        // Separate into general and technical sections
+        Object.entries(groupedResults).forEach(([ruleId, results]) => {
+          if (technicalRules.has(ruleId)) {
+            technicalResults[ruleId] = results;
+          } else {
+            generalResults[ruleId] = results;
+          }
+        });
         %>
 
-        <% Object.entries(groupedResults).forEach(([ruleId, results]) => {
-          const ruleResults = results;
-          const allPassed = ruleResults.every(r => r.passed);
-          const hasErrors = ruleResults.some(r => !r.passed && r.severity === 'error');
-          const hasWarnings = ruleResults.some(r => !r.passed && r.severity === 'warning');
-        %>
-          <div class="result-card <%= allPassed ? 'result-pass' : hasErrors ? 'result-error' : 'result-warning' %>">
-            <div class="result-header">
-              <div>
-                <span class="result-icon"><%= allPassed ? '✓' : hasErrors ? '✗' : '⚠' %></span>
-                <h3><%= ruleResults[0].rule.name %></h3>
+        <!-- General Validation Rules -->
+        <div class="section-group">
+          <h3 class="section-title">General Best Practices</h3>
+
+          <% Object.entries(generalResults).forEach(([ruleId, results]) => {
+            const ruleResults = results;
+            const allPassed = ruleResults.every(r => r.passed);
+            const hasErrors = ruleResults.some(r => !r.passed && r.severity === 'error');
+            const hasWarnings = ruleResults.some(r => !r.passed && r.severity === 'warning');
+          %>
+            <div class="result-card <%= allPassed ? 'result-pass' : hasErrors ? 'result-error' : 'result-warning' %>">
+              <div class="result-header">
+                <div>
+                  <span class="result-icon"><%= allPassed ? '✓' : hasErrors ? '✗' : '⚠' %></span>
+                  <h3><%= ruleResults[0].rule.name %></h3>
+                </div>
+                <span class="badge <%= allPassed ? 'badge-success' : hasErrors ? 'badge-error' : 'badge-warning' %>">
+                  <%= allPassed ? 'PASSED' : hasErrors ? 'FAILED' : 'WARNING' %>
+                </span>
               </div>
-              <span class="badge <%= allPassed ? 'badge-success' : hasErrors ? 'badge-error' : 'badge-warning' %>">
-                <%= allPassed ? 'PASSED' : hasErrors ? 'FAILED' : 'WARNING' %>
-              </span>
+              <p class="rule-description"><%= ruleResults[0].rule.description %></p>
+
+              <% ruleResults.forEach(result => { %>
+                <div class="result-item">
+                  <p class="result-message"><%= result.message %></p>
+
+                  <% if (result.suggestions && result.suggestions.length > 0) { %>
+                    <div class="suggestions">
+                      <strong>Suggestions:</strong>
+                      <ul>
+                        <% result.suggestions.forEach(suggestion => { %>
+                          <li><%= suggestion %></li>
+                        <% }) %>
+                      </ul>
+                    </div>
+                  <% } %>
+                </div>
+              <% }) %>
             </div>
-            <p class="rule-description"><%= ruleResults[0].rule.description %></p>
+          <% }) %>
+        </div>
 
-            <% ruleResults.forEach(result => { %>
-              <div class="result-item">
-                <p class="result-message"><%= result.message %></p>
+        <!-- Technical Infrastructure Rules -->
+        <% if (Object.keys(technicalResults).length > 0) { %>
+        <div class="section-group">
+          <h3 class="section-title">Technical Infrastructure</h3>
+          <p class="section-description">Networking and storage configuration for optimal Railway deployment</p>
 
-                <% if (result.suggestions && result.suggestions.length > 0) { %>
-                  <div class="suggestions">
-                    <strong>Suggestions:</strong>
-                    <ul>
-                      <% result.suggestions.forEach(suggestion => { %>
-                        <li><%= suggestion %></li>
-                      <% }) %>
-                    </ul>
-                  </div>
-                <% } %>
+          <% Object.entries(technicalResults).forEach(([ruleId, results]) => {
+            const ruleResults = results;
+            const allPassed = ruleResults.every(r => r.passed);
+            const hasErrors = ruleResults.some(r => !r.passed && r.severity === 'error');
+            const hasWarnings = ruleResults.some(r => !r.passed && r.severity === 'warning');
+          %>
+            <div class="result-card <%= allPassed ? 'result-pass' : hasErrors ? 'result-error' : 'result-warning' %>">
+              <div class="result-header">
+                <div>
+                  <span class="result-icon"><%= allPassed ? '✓' : hasErrors ? '✗' : '⚠' %></span>
+                  <h3><%= ruleResults[0].rule.name %></h3>
+                </div>
+                <span class="badge <%= allPassed ? 'badge-success' : hasErrors ? 'badge-error' : 'badge-warning' %>">
+                  <%= allPassed ? 'PASSED' : hasErrors ? 'FAILED' : 'WARNING' %>
+                </span>
               </div>
-            <% }) %>
-          </div>
-        <% }) %>
+              <p class="rule-description"><%= ruleResults[0].rule.description %></p>
+
+              <% ruleResults.forEach(result => { %>
+                <div class="result-item">
+                  <p class="result-message"><%= result.message %></p>
+
+                  <% if (result.suggestions && result.suggestions.length > 0) { %>
+                    <div class="suggestions">
+                      <strong>Suggestions:</strong>
+                      <ul>
+                        <% result.suggestions.forEach(suggestion => { %>
+                          <li><%= suggestion %></li>
+                        <% }) %>
+                      </ul>
+                    </div>
+                  <% } %>
+                </div>
+              <% }) %>
+            </div>
+          <% }) %>
+        </div>
+        <% } %>
       </div>
     </main>
 
