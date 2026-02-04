@@ -42,15 +42,30 @@
 
       <div class="info-section">
         <h2>What Gets Validated?</h2>
+
+        <h3 style="color: var(--text-primary); font-size: 1.125rem; margin: 24px 0 12px 0;">General Best Practices</h3>
         <ul class="features-list">
-          <li><strong>Environment Variables</strong> - Descriptions, secure credential handling, template functions usage</li>
-          <li><strong>Health Checks</strong> - Proper health check endpoints for web services</li>
-          <li><strong>Naming Conventions</strong> - Capital case, space-delimited, no special characters</li>
+          <li><strong>Service Icons</strong> - Icon URLs configured, 1:1 aspect ratio, transparent backgrounds</li>
+          <li><strong>Naming Conventions</strong> - Capital case, space-delimited, no special characters (skips check for GitHub org names)</li>
+          <li><strong>Environment Variables</strong> - Descriptions for user-facing variables, secure credential generation with template functions</li>
+          <li><strong>Health Checks</strong> - Readiness endpoints for web services, Dockerfile HEALTHCHECK support</li>
+          <li><strong>Authentication</strong> - Generated passwords using ${{secret()}}, no hardcoded or weak credentials</li>
+          <li><strong>Workspace Naming</strong> - Authorized use of brand/company names only</li>
         </ul>
 
-        <p class="muted">
+        <h3 style="color: var(--text-primary); font-size: 1.125rem; margin: 24px 0 12px 0;">Technical Infrastructure</h3>
+        <ul class="features-list">
+          <li><strong>Private Networking</strong> - Use of ${{SERVICE.RAILWAY_PRIVATE_DOMAIN}} for service-to-service communication</li>
+          <li><strong>Persistent Storage</strong> - Volume configuration for databases (PostgreSQL, MySQL, MongoDB, Redis, etc.)</li>
+        </ul>
+
+        <p class="muted" style="margin-top: 24px;">
           Based on the official
           <a href="https://docs.railway.com/guides/templates-best-practices" target="_blank">Railway Template Best Practices</a>
+        </p>
+
+        <p class="muted">
+          <strong>Note:</strong> Warnings don't affect your score. Only errors impact the percentage.
         </p>
       </div>
     </main>

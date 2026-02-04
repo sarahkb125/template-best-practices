@@ -38,11 +38,17 @@ export async function validateTemplate(template: TemplateData): Promise<Validati
 
   // Group by rule to count unique rules
   const uniqueRules = new Set(allResults.map(r => r.rule.id));
-  const passedRules = new Set(
-    allResults
-      .filter(r => r.passed)
-      .map(r => r.rule.id)
-  );
+
+  // A rule passes if it has no ERROR-severity failures
+  // Warnings and info messages don't count against the score
+  const passedRules = new Set<string>();
+  for (const ruleId of uniqueRules) {
+    const ruleResults = allResults.filter(r => r.rule.id === ruleId);
+    const hasErrors = ruleResults.some(r => !r.passed && r.severity === 'error');
+    if (!hasErrors) {
+      passedRules.add(ruleId);
+    }
+  }
 
   const totalRules = uniqueRules.size;
   const passedRulesCount = passedRules.size;
