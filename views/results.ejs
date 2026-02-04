@@ -56,7 +56,10 @@
       </div>
 
       <div class="results-section">
-        <h2>Validation Details</h2>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+          <h2 style="margin: 0;">Validation Details</h2>
+          <button onclick="toggleAll()" class="btn btn-secondary" id="toggle-all-btn">Expand All</button>
+        </div>
 
         <%
         const groupedResults = {};
@@ -204,6 +207,16 @@
   </div>
 
   <script>
+    let allExpanded = false;
+
+    // Initialize summaries on page load
+    document.addEventListener('DOMContentLoaded', function() {
+      const summaries = document.querySelectorAll('.result-summary');
+      summaries.forEach(summary => {
+        summary.style.display = 'inline-flex';
+      });
+    });
+
     function toggleCard(cardId) {
       const content = document.getElementById(cardId + '-content');
       const icon = document.getElementById(cardId + '-icon');
@@ -218,6 +231,44 @@
         icon.textContent = '▼';
         summary.style.display = 'inline-flex';
       }
+
+      // Update toggle all button state
+      updateToggleAllButton();
+    }
+
+    function toggleAll() {
+      const allContents = document.querySelectorAll('.result-content');
+      const allIcons = document.querySelectorAll('.result-header .toggle-icon');
+      const allSummaries = document.querySelectorAll('.result-summary');
+
+      allExpanded = !allExpanded;
+
+      allContents.forEach(content => {
+        if (allExpanded) {
+          content.classList.remove('collapsed');
+        } else {
+          content.classList.add('collapsed');
+        }
+      });
+
+      allIcons.forEach(icon => {
+        icon.textContent = allExpanded ? '▲' : '▼';
+      });
+
+      allSummaries.forEach(summary => {
+        summary.style.display = allExpanded ? 'none' : 'inline-flex';
+      });
+
+      updateToggleAllButton();
+    }
+
+    function updateToggleAllButton() {
+      const btn = document.getElementById('toggle-all-btn');
+      const allContents = document.querySelectorAll('.result-content');
+      const expandedCount = Array.from(allContents).filter(c => !c.classList.contains('collapsed')).length;
+
+      allExpanded = expandedCount === allContents.length;
+      btn.textContent = allExpanded ? 'Collapse All' : 'Expand All';
     }
   </script>
 </body>
