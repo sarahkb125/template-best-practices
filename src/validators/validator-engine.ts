@@ -34,7 +34,7 @@ export async function validateTemplate(template: TemplateData): Promise<Validati
   // Calculate statistics
   const passedResults = allResults.filter(r => r.passed);
   const failedResults = allResults.filter(r => !r.passed);
-  const warnings = allResults.filter(r => r.severity === 'warning');
+  const warnings = allResults.filter(r => !r.passed && r.severity === 'warning');
 
   // Group by rule to count unique rules
   const uniqueRules = new Set(allResults.map(r => r.rule.id));
