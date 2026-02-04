@@ -83,7 +83,11 @@
 
         <!-- Visual Checks -->
         <div class="section-group">
-          <h3 class="section-title">Visual Checks</h3>
+          <h3 class="section-title section-toggle" onclick="toggleSection('visual-checks')">
+            <span>Visual Checks</span>
+            <span class="toggle-icon" id="visual-checks-icon">▼</span>
+          </h3>
+          <div class="section-content collapsed" id="visual-checks-content">
 
           <% Object.entries(visualResults).forEach(([ruleId, results]) => {
             const ruleResults = results;
@@ -121,12 +125,17 @@
               <% }) %>
             </div>
           <% }) %>
+          </div>
         </div>
 
         <!-- Technical Checks -->
         <% if (Object.keys(technicalResults).length > 0) { %>
         <div class="section-group">
-          <h3 class="section-title">Technical Checks</h3>
+          <h3 class="section-title section-toggle" onclick="toggleSection('technical-checks')">
+            <span>Technical Checks</span>
+            <span class="toggle-icon" id="technical-checks-icon">▼</span>
+          </h3>
+          <div class="section-content collapsed" id="technical-checks-content">
           <p class="section-description">Environment variables, health checks, authentication, networking, and storage configuration</p>
 
           <% Object.entries(technicalResults).forEach(([ruleId, results]) => {
@@ -165,6 +174,7 @@
               <% }) %>
             </div>
           <% }) %>
+          </div>
         </div>
         <% } %>
       </div>
@@ -174,5 +184,20 @@
       <p>Built for Railway • <a href="/" class="btn btn-link">Validate Another Template</a></p>
     </footer>
   </div>
+
+  <script>
+    function toggleSection(sectionId) {
+      const content = document.getElementById(sectionId + '-content');
+      const icon = document.getElementById(sectionId + '-icon');
+
+      if (content.classList.contains('collapsed')) {
+        content.classList.remove('collapsed');
+        icon.textContent = '▲';
+      } else {
+        content.classList.add('collapsed');
+        icon.textContent = '▼';
+      }
+    }
+  </script>
 </body>
 </html>

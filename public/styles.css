@@ -584,11 +584,43 @@ footer a:hover {
   letter-spacing: -0.01em;
 }
 
+.section-title.section-toggle {
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: color 0.2s ease;
+}
+
+.section-title.section-toggle:hover {
+  color: var(--primary-blue);
+}
+
+.toggle-icon {
+  font-size: 1rem;
+  transition: transform 0.3s ease;
+  color: var(--text-secondary);
+}
+
+.section-content {
+  max-height: 10000px;
+  overflow: hidden;
+  transition: max-height 0.4s ease, opacity 0.3s ease;
+  opacity: 1;
+}
+
+.section-content.collapsed {
+  max-height: 0;
+  opacity: 0;
+  margin-bottom: 0;
+}
+
 .section-description {
   color: var(--text-secondary);
   font-size: 0.9375rem;
   margin-bottom: 24px;
-  margin-top: -8px;
+  margin-top: 12px;
 }
 
 /* Responsive */
