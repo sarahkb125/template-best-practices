@@ -83,59 +83,64 @@
 
         <!-- Visual Checks -->
         <div class="section-group">
-          <h3 class="section-title section-toggle" onclick="toggleSection('visual-checks')">
-            <span>Visual Checks</span>
-            <span class="toggle-icon" id="visual-checks-icon">▼</span>
-          </h3>
-          <div class="section-content collapsed" id="visual-checks-content">
+          <h3 class="section-title">Visual Checks</h3>
 
           <% Object.entries(visualResults).forEach(([ruleId, results]) => {
             const ruleResults = results;
             const allPassed = ruleResults.every(r => r.passed);
             const hasErrors = ruleResults.some(r => !r.passed && r.severity === 'error');
             const hasWarnings = ruleResults.some(r => !r.passed && r.severity === 'warning');
+
+            // Calculate counts for summary
+            const passedCount = ruleResults.filter(r => r.passed).length;
+            const errorCount = ruleResults.filter(r => !r.passed && r.severity === 'error').length;
+            const warningCount = ruleResults.filter(r => !r.passed && r.severity === 'warning').length;
+            const cardId = ruleId + '-card';
           %>
             <div class="result-card <%= allPassed ? 'result-pass' : hasErrors ? 'result-error' : 'result-warning' %>">
-              <div class="result-header">
+              <div class="result-header result-toggle" onclick="toggleCard('<%= cardId %>')">
                 <div>
                   <span class="result-icon"><%= allPassed ? '✓' : hasErrors ? '✗' : '⚠' %></span>
                   <h3><%= ruleResults[0].rule.name %></h3>
+                  <span class="result-summary" id="<%= cardId %>-summary">
+                    <% if (passedCount > 0) { %><span class="summary-success"><%= passedCount %> passed</span><% } %>
+                    <% if (errorCount > 0) { %><span class="summary-error"><%= errorCount %> failed</span><% } %>
+                    <% if (warningCount > 0) { %><span class="summary-warning"><%= warningCount %> warning<%= warningCount > 1 ? 's' : '' %></span><% } %>
+                  </span>
                 </div>
-                <span class="badge <%= allPassed ? 'badge-success' : hasErrors ? 'badge-error' : 'badge-warning' %>">
-                  <%= allPassed ? 'PASSED' : hasErrors ? 'FAILED' : 'WARNING' %>
-                </span>
+                <div>
+                  <span class="toggle-icon" id="<%= cardId %>-icon">▼</span>
+                </div>
               </div>
-              <p class="rule-description"><%= ruleResults[0].rule.description %></p>
 
-              <% ruleResults.forEach(result => { %>
-                <div class="result-item">
-                  <p class="result-message"><%= result.message %></p>
+              <div class="result-content collapsed" id="<%= cardId %>-content">
+                <p class="rule-description"><%= ruleResults[0].rule.description %></p>
 
-                  <% if (result.suggestions && result.suggestions.length > 0) { %>
-                    <div class="suggestions">
-                      <strong>Suggestions:</strong>
-                      <ul>
-                        <% result.suggestions.forEach(suggestion => { %>
-                          <li><%= suggestion %></li>
-                        <% }) %>
-                      </ul>
-                    </div>
-                  <% } %>
-                </div>
-              <% }) %>
+                <% ruleResults.forEach(result => { %>
+                  <div class="result-item">
+                    <p class="result-message"><%= result.message %></p>
+
+                    <% if (result.suggestions && result.suggestions.length > 0) { %>
+                      <div class="suggestions">
+                        <strong>Suggestions:</strong>
+                        <ul>
+                          <% result.suggestions.forEach(suggestion => { %>
+                            <li><%= suggestion %></li>
+                          <% }) %>
+                        </ul>
+                      </div>
+                    <% } %>
+                  </div>
+                <% }) %>
+              </div>
             </div>
           <% }) %>
-          </div>
         </div>
 
         <!-- Technical Checks -->
         <% if (Object.keys(technicalResults).length > 0) { %>
         <div class="section-group">
-          <h3 class="section-title section-toggle" onclick="toggleSection('technical-checks')">
-            <span>Technical Checks</span>
-            <span class="toggle-icon" id="technical-checks-icon">▼</span>
-          </h3>
-          <div class="section-content collapsed" id="technical-checks-content">
+          <h3 class="section-title">Technical Checks</h3>
           <p class="section-description">Environment variables, health checks, authentication, networking, and storage configuration</p>
 
           <% Object.entries(technicalResults).forEach(([ruleId, results]) => {
@@ -143,38 +148,51 @@
             const allPassed = ruleResults.every(r => r.passed);
             const hasErrors = ruleResults.some(r => !r.passed && r.severity === 'error');
             const hasWarnings = ruleResults.some(r => !r.passed && r.severity === 'warning');
+
+            // Calculate counts for summary
+            const passedCount = ruleResults.filter(r => r.passed).length;
+            const errorCount = ruleResults.filter(r => !r.passed && r.severity === 'error').length;
+            const warningCount = ruleResults.filter(r => !r.passed && r.severity === 'warning').length;
+            const cardId = ruleId + '-card';
           %>
             <div class="result-card <%= allPassed ? 'result-pass' : hasErrors ? 'result-error' : 'result-warning' %>">
-              <div class="result-header">
+              <div class="result-header result-toggle" onclick="toggleCard('<%= cardId %>')">
                 <div>
                   <span class="result-icon"><%= allPassed ? '✓' : hasErrors ? '✗' : '⚠' %></span>
                   <h3><%= ruleResults[0].rule.name %></h3>
+                  <span class="result-summary" id="<%= cardId %>-summary">
+                    <% if (passedCount > 0) { %><span class="summary-success"><%= passedCount %> passed</span><% } %>
+                    <% if (errorCount > 0) { %><span class="summary-error"><%= errorCount %> failed</span><% } %>
+                    <% if (warningCount > 0) { %><span class="summary-warning"><%= warningCount %> warning<%= warningCount > 1 ? 's' : '' %></span><% } %>
+                  </span>
                 </div>
-                <span class="badge <%= allPassed ? 'badge-success' : hasErrors ? 'badge-error' : 'badge-warning' %>">
-                  <%= allPassed ? 'PASSED' : hasErrors ? 'FAILED' : 'WARNING' %>
-                </span>
+                <div>
+                  <span class="toggle-icon" id="<%= cardId %>-icon">▼</span>
+                </div>
               </div>
-              <p class="rule-description"><%= ruleResults[0].rule.description %></p>
 
-              <% ruleResults.forEach(result => { %>
-                <div class="result-item">
-                  <p class="result-message"><%= result.message %></p>
+              <div class="result-content collapsed" id="<%= cardId %>-content">
+                <p class="rule-description"><%= ruleResults[0].rule.description %></p>
 
-                  <% if (result.suggestions && result.suggestions.length > 0) { %>
-                    <div class="suggestions">
-                      <strong>Suggestions:</strong>
-                      <ul>
-                        <% result.suggestions.forEach(suggestion => { %>
-                          <li><%= suggestion %></li>
-                        <% }) %>
-                      </ul>
-                    </div>
-                  <% } %>
-                </div>
-              <% }) %>
+                <% ruleResults.forEach(result => { %>
+                  <div class="result-item">
+                    <p class="result-message"><%= result.message %></p>
+
+                    <% if (result.suggestions && result.suggestions.length > 0) { %>
+                      <div class="suggestions">
+                        <strong>Suggestions:</strong>
+                        <ul>
+                          <% result.suggestions.forEach(suggestion => { %>
+                            <li><%= suggestion %></li>
+                          <% }) %>
+                        </ul>
+                      </div>
+                    <% } %>
+                  </div>
+                <% }) %>
+              </div>
             </div>
           <% }) %>
-          </div>
         </div>
         <% } %>
       </div>
@@ -186,16 +204,19 @@
   </div>
 
   <script>
-    function toggleSection(sectionId) {
-      const content = document.getElementById(sectionId + '-content');
-      const icon = document.getElementById(sectionId + '-icon');
+    function toggleCard(cardId) {
+      const content = document.getElementById(cardId + '-content');
+      const icon = document.getElementById(cardId + '-icon');
+      const summary = document.getElementById(cardId + '-summary');
 
       if (content.classList.contains('collapsed')) {
         content.classList.remove('collapsed');
         icon.textContent = '▲';
+        summary.style.display = 'none';
       } else {
         content.classList.add('collapsed');
         icon.textContent = '▼';
+        summary.style.display = 'inline-flex';
       }
     }
   </script>
