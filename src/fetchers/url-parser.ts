@@ -30,8 +30,8 @@ export function parseTemplateUrl(input: string): string {
 
     // Check for /deploy/XXX format
     const deployPathMatch = url.pathname.match(/\/deploy\/([^\/]+)/);
-    if (pathMatch) {
-      return pathMatch[1];
+    if (deployPathMatch) {
+      return deployPathMatch[1];
     }
 
     throw new Error(`Could not extract template code from URL: ${input}`);
