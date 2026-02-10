@@ -23,8 +23,8 @@ const WEAK_DEFAULTS = ['password', 'admin', 'password123', 'secret', 'changeme',
 // Check if variable is a reference to another variable
 function isReferenceVariable(defaultValue: string): boolean {
   if (!defaultValue) return false;
-  // Matches ${{VAR_NAME}} or ${{ VAR_NAME }}
-  return /^\$\{\{\s*[A-Z_][A-Z0-9_]*\s*\}\}$/i.test(defaultValue);
+  // Matches ${{VAR_NAME}} or ${{SERVICE.VAR_NAME}} or ${{ SERVICE.VAR }}
+  return /^\$\{\{\s*[A-Z_][A-Z0-9_]*(\.[A-Z_][A-Z0-9_]*)?\s*\}\}$/i.test(defaultValue);
 }
 
 // Check if variable uses template functions (auto-generated, user won't touch)
