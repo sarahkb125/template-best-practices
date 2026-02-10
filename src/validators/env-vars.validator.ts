@@ -142,23 +142,24 @@ export function validateEnvVars(template: TemplateData): ValidationResult[] {
 
       // Check for hardcoded secrets
       if (varConfig.default || varConfig.value) {
-        const value = (varConfig.default || varConfig.value || '').toLowerCase();
+        const value = varConfig.default || varConfig.value || '';
+        const valueLower = value.toLowerCase();
 
         // Check for weak default passwords
         if (varName.toLowerCase().includes('password') || varName.toLowerCase().includes('secret')) {
-          if (WEAK_DEFAULTS.includes(value)) {
+          if (WEAK_DEFAULTS.includes(valueLower)) {
             results.push({
               rule: RULE,
               passed: false,
               severity: 'error',
               message: `Environment variable "${varName}" in service "${service.name}" has a weak default value`,
-              details: { service: service.name, variable: varName, value },
+              details: { service: service.name, variable: varName, value: valueLower },
               suggestions: ['Use template function: ${{secret()}} to generate secure credentials'],
             });
           }
 
-          // Check if it's using template functions
-          if (!value.includes('${{')) {
+          // Check if it's using template functions or reference variables
+          if (!usesTemplateFunction(value) && !isReferenceVariable(value) && !usesRailwayProvidedValue(value)) {
             results.push({
               rule: RULE,
               passed: false,
